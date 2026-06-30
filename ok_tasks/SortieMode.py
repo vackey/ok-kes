@@ -1,6 +1,9 @@
 from ok import TriggerTask
 
 import utils_sortie
+from opencc import OpenCC
+
+_cc = OpenCC('t2s')  # 繁转简，用于OCR文本统一转换
 
 
 class SortieMode(TriggerTask):
@@ -28,8 +31,15 @@ class SortieMode(TriggerTask):
         self.default_config["卡牌奖励优先级"] = ["梦之边境", "装备包"]
         self.default_config["任务优先级"] = ["选取随机3条命运","信用点增加", "移除"]
 
+    def _ocr_and_simplify(self):
+        """执行OCR并将所有识别文本转简体。"""
+        texts = self.ocr()
+        for b in texts:
+            b.name = _cc.convert(b.name)
+        return texts
+
     def run(self):
-        self.all_texts = self.ocr()
+        self.all_texts = self._ocr_and_simplify()
         for handle_page in utils_sortie.PAGE_HANDLERS:
             if handle_page(self):
                 return

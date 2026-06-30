@@ -5,6 +5,16 @@ import json
 import random
 import cv2
 import numpy as np
+from opencc import OpenCC
+
+_cc = OpenCC('t2s')  # 繁转简，用于OCR文本统一转换
+
+
+def _simplify_texts(texts):
+    """将OCR结果的文本批量转换为简体（原地修改）。"""
+    for b in texts:
+        b.name = _cc.convert(b.name)
+    return texts
 
 def _get_config_value(task: TriggerTask, key, default):
     """读取运行时配置，优先从 task.config 读取，其次 default_config，最后使用默认值。"""
@@ -96,15 +106,12 @@ def select_card(task: TriggerTask, card_names, confirm_point=None, confirm_sleep
                         task.click(*confirm_point)
                         task.sleep(confirm_sleep)
                     return selected
-                # 选完一张后重新识别，列表可能变化
-                task.sleep(0.3)
-                task.all_texts = task.ocr()
         # 未找到且未达最大次数，向下滚动后重新识别
         if i < max_scrolls:
             task.log_info(f"select_card 第{i+1}次未找到目标, 向下滚动")
             task.scroll_relative(0.5, 0.7, -3)
             task.sleep(0.3)
-            task.all_texts = task.ocr()
+            task.all_texts = _simplify_texts(task.ocr())
 
     # fallback: 补充点击当前 OCR 结果里最靠下的卡牌文本，避免固定坐标点到空白
     if fallback_delete and selected < count:

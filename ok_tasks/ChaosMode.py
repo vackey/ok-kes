@@ -1,6 +1,9 @@
 from ok import TriggerTask
 
 import utils_chaos
+from opencc import OpenCC
+
+_cc = OpenCC('t2s')  # 繁转简，用于OCR文本统一转换
 
 class ChaosMode(TriggerTask):
 
@@ -26,11 +29,17 @@ class ChaosMode(TriggerTask):
         self.default_config['进入商店'] = False
         self.default_config['路线优先级'] = ["休息", "事件", "小怪", "boss"]
 
+    def _ocr_and_simplify(self):
+        """执行OCR并将所有识别文本转简体。"""
+        texts = self.ocr()
+        for b in texts:
+            b.name = _cc.convert(b.name)
+        return texts
+
     def run(self):
-        # 每帧执行一次 OCR, 供各页面处理函数复用
-        self.all_texts = self.ocr()
+        # 每帧执行一次 OCR 并转简体, 供各页面处理函数复用
+        self.all_texts = self._ocr_and_simplify()
         # 依次尝试各页面处理函数, 命中(返回 True)即结束本次循环
         for handle_page in utils_chaos.PAGE_HANDLERS:
             if handle_page(self):
                 return
-            
