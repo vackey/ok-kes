@@ -63,8 +63,7 @@ jobs:
         id: sync   # Give the step an ID to access its outputs
         uses: ok-oldking/partial-sync-repo@master
         with:
-          repos: |
-            https://cnb:${{ secrets.CNB_TOKEN }}@cnb.cool/ok-oldking/ok-py.git            
+          repos: |         
             https://ok-oldking:${{ secrets.OK_GH }}@github.com/ok-oldking/ok-boilerplate-update.git
           sync_list: 'deploy.txt'
           tag: ${{ github.ref_name }}
