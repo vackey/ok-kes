@@ -1,4 +1,4 @@
-name: "ok-czn"
+name: "ok-script-app"
 uac: true
 profiles:
   - name: "China"
@@ -12,6 +12,6 @@ profiles:
     # PYTHONPATH: "your/default/path" # Optional, will be "" if missing
 
   - name: "Global"
-    git_url: "https://github.com/ok-oldking/ok-script-app.git"
+    git_url: "https://github.com/ok-oldking/ok-py-update.git"
     main_script: "main.py"
     requirements: "requirements.txt"
