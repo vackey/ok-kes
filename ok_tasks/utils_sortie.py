@@ -435,67 +435,48 @@ def handle_ether_supply(task: TriggerTask):
     return False
 
 
-def handle_card_discard_page(task: TriggerTask):
-    """卡牌丢弃页面: 丢弃卡牌并确认。"""
-    hand_count = _read_hand_count(task)
-    if hand_count is None:
+def handle_battle_hand_select(task: TriggerTask):
+    """战斗中手牌选择页面: 检测到请选择卡牌文本且底部有手牌数，随机选择指定数量的卡牌。"""
+    # 检测(0.5, 0.111)位置的提示文本
+    prompt = find_box_at_point(task, 0.5, 0.111)
+    if not prompt:
         return False
-    box = find_box_at_point(task, 0.484, 0.111)
-    if box and re.search(r"请选择最多.*丢弃.*", box.name):
-        task.log_info("检测到卡牌丢弃页面（可选），点击确认")
-        task.click(0.934, 0.889)
+    m = re.search(r'请选择(?=.*卡牌).*?(\d+)张', prompt.name)
+    if not m:
+        return False
+
+    # 检测(0.505, 0.971)是否有手牌数 x/10
+    hand_box = find_box_at_point(task, 0.505, 0.971)
+    if not (hand_box and re.search(r'\d+/10', hand_box.name)):
+        return False
+
+    need = int(m.group(1))
+    task.log_info(f"检测到战斗中手牌选择页面，需选择{need}张卡牌，随机选择")
+
+    selected = 0
+    for _ in range(need):
+        task.all_texts = _simplify_texts(task.ocr())
+        cards = [
+            b for b in task.all_texts
+            if 0.116 <= (b.x + b.width / 2) / task.width <= 0.859
+            and 0.697 <= (b.y + b.height / 2) / task.height <= 0.908
+            and len(b.name.strip()) > 1
+            and b.name not in ["确认", "返回", "跳过"]
+        ]
+        if not cards:
+            task.log_info("手牌区域未找到卡牌，停止选择")
+            break
+        chosen = random.choice(cards)
+        task.log_info(f"选择手牌: {chosen.name}")
+        task.click_box(chosen)
+        selected += 1
         task.sleep(1)
-        return True
-    must_box = find_box_at_point(task, 0.507, 0.115)
-    if must_box:
-        match = re.search(r"请选择(\d)张要丢弃的卡牌", must_box.name)
-        if match:
-            need = int(match.group(1))
-            task.log_info(f"检测到必须弃牌页面，需丢弃{need}张")
-            priority = _get_card_list(task, "丢弃卡牌优先级")
-            selected = 0
-            for pri_name in priority:
-                task.all_texts = task.ocr()
-                cards_in_region = [
-                    b for b in task.all_texts
-                    if 0.116 <= (b.x + b.width / 2) / task.width <= 0.859
-                    and 0.697 <= (b.y + b.height / 2) / task.height <= 0.908
-                    and len(b.name.strip()) > 1
-                    and b.name not in ["确认", "返回", "跳过"]
-                ]
-                for card in cards_in_region:
-                    if card.name in pri_name:
-                        task.click_box(card)
-                        task.log_info(f"丢弃卡牌: {card.name}")
-                        selected += 1
-                        task.sleep(1)
-                        if selected >= need:
-                            break
-                if selected >= need:
-                    break
-            if selected < need:
-                remaining = need - selected
-                task.log_info(f"优先级卡牌不足，从左往右补充选择{remaining}张")
-                while selected < need:
-                    task.all_texts = task.ocr()
-                    rest_cards = sorted(
-                        [b for b in task.all_texts
-                         if 0.116 <= (b.x + b.width / 2) / task.width <= 0.859
-                         and 0.697 <= (b.y + b.height / 2) / task.height <= 0.908
-                         and len(b.name.strip()) > 1
-                         and b.name not in ["确认", "返回", "跳过"]],
-                        key=lambda b: b.x
-                    )
-                    if not rest_cards:
-                        break
-                    task.click_box(rest_cards[0])
-                    task.log_info(f"补充丢弃卡牌: {rest_cards[0].name}")
-                    selected += 1
-                    task.sleep(1)
-            task.click(0.934, 0.883)
-            task.sleep(1)
-            return True
-    return False
+
+    if selected > 0:
+        task.log_info(f"已完成选择，点击确认")
+        task.click(0.934, 0.883)
+        task.sleep(1)
+    return True
 
 
 def handle_curiosity_activate(task: TriggerTask):
@@ -641,7 +622,7 @@ PAGE_HANDLERS = [
     handle_non_battle_page,
     handle_battle_crash,
     handle_discard_hand_card,
-    handle_card_discard_page,
+    handle_battle_hand_select,
     handle_curiosity_activate,
     handle_extra_card_use,
     handle_card_function_select,
