@@ -613,8 +613,7 @@ def handle_convert_card(task: TriggerTask):
 def handle_negotiation(task: TriggerTask):
     """谈判失败页面: 点击下一步跳过。"""
     title = find_box_at_point(task, 0.498, 0.683)
-    next_step = find_box_at_point(task, 0.665, 0.899)
-    if title and title.name in "失败" and next_step and next_step.name in "下一步":
+    if title and title.name in "失败":
         task.log_info("检测到掷骰子失败，跳过掷骰子")
         task.click(0.665, 0.899)
         return True
